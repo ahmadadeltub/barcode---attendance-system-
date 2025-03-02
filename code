@@ -1,0 +1,96 @@
+import tkinter as tk
+from tkinter import messagebox
+from openpyxl import load_workbook
+
+# Specify the Excel file name (ensure it's in the same folder or update the path)
+file_name = 'Students.xlsx'
+
+# Load the workbook and select the active sheet
+try:
+    wb = load_workbook(file_name)
+    ws = wb.active
+except Exception as e:
+    print(f"Error loading {file_name}: {e}")
+    exit()
+
+def get_column_index(header_name):
+    """
+    Searches the first row for the header (case insensitive)
+    and returns the column index (1-indexed).
+    """
+    for col in ws.iter_cols(min_row=1, max_row=1):
+        header_value = col[0].value
+        if header_value and str(header_value).strip().lower() == header_name.lower():
+            return col[0].column
+    return None
+
+# Dynamically find the column indexes for "id", "name", and "pa"
+id_column = get_column_index('id')
+name_column = get_column_index('name')
+pa_column = get_column_index('pa')
+
+if id_column is None:
+    print("Error: 'id' column not found in the header row.")
+    exit()
+if name_column is None:
+    print("Error: 'name' column not found in the header row.")
+    exit()
+if pa_column is None:
+    print("Error: 'pa' column not found in the header row.")
+    exit()
+
+def mark_attendance(student_id):
+    """
+    Searches for the student ID in the 'id' column.
+    If found, retrieves the student's name from the 'name' column,
+    writes "Present" in the corresponding cell of the 'pa' column,
+    and saves the workbook.
+    """
+    found = False
+    student_name = None
+    # Iterate over rows starting from row 2 (headers are in row 1)
+    for row in ws.iter_rows(min_row=2):
+        cell_id = row[id_column - 1].value  # Adjust for 0-indexed list
+        if cell_id is not None and str(cell_id).strip() == student_id:
+            student_name = row[name_column - 1].value
+            row[pa_column - 1].value = "Present"
+            found = True
+            wb.save(file_name)
+            messagebox.showinfo("Attendance", 
+                                f"Attendance marked for Student ID: {student_id}\nName: {student_name}")
+            break
+    if not found:
+        messagebox.showerror("Error", f"Student ID {student_id} not found.")
+
+def submit_attendance():
+    """
+    Retrieves the entered student barcode/ID from the GUI
+    and marks attendance accordingly.
+    """
+    student_id = entry.get().strip()
+    if student_id:
+        mark_attendance(student_id)
+        entry.delete(0, tk.END)
+    else:
+        messagebox.showwarning("Warning", "Please enter a student barcode/ID.")
+
+# Create the tkinter GUI window
+root = tk.Tk()
+root.title("Student Attendance System")
+
+# Label prompting the user to scan or enter a barcode
+label = tk.Label(root, text="Scan or Enter Student Barcode:")
+label.pack(pady=10)
+
+# Entry widget for barcode input
+entry = tk.Entry(root, width=40)
+entry.pack(pady=5)
+entry.focus()
+
+# Submit button to process the attendance
+submit_button = tk.Button(root, text="Submit", command=submit_attendance)
+submit_button.pack(pady=10)
+
+# Run the tkinter event loop
+root.mainloop()
+
